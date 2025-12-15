@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agenda Quincho - Centro Asturiano</title>
+  <style>
+    :root {
+      --azul-primario: #1e3a8a;
+      --azul-claro: #3b82f6;
+      --amarillo: #f59e0b;
+      --amarillo-claro: #fbbf24;
+      --blanco: #ffffff;
+      --gris-claro: #f8fafc;
+      --gris: #64748b;
+      --rojo: #dc2626;
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, var(--azul-primario) 0%, var(--azul-claro) 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container { max-width: 900px; margin: 0 auto; }
+    .header { 
+      text-align: center; 
+      color: var(--blanco); 
+      margin-bottom: 30px;
+      padding: 20px;
+    }
+    .header h1 { 
+      font-size: 2.5em; 
+      background: linear-gradient(45deg, var(--amarillo), var(--blanco));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 10px;
+    }
+    
+    .card { 
+      background: var(--blanco); 
+      border-radius: 20px; 
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      padding: 40px; 
+      margin-bottom: 20px;
+      position: relative;
+      overflow: hidden;
+    }
+    .card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px;
+      background: linear-gradient(90deg, var(--amarillo), var(--azul-primario));
+    }
+    
+    .modal { 
+      display: none; 
+      position: fixed; 
+      z-index: 1000; 
+      left: 0; top: 0; 
+      width: 100%; 
+      height: 100%; 
+      background: rgba(0,0,0,0.8); 
+      backdrop-filter: blur(5px);
+    }
+    .modal.active { display: flex; align-items: center; justify-content: center; }
+    .modal-content { 
+      background: var(--blanco); 
+      margin: 2rem; 
+      padding: 40px; 
+      border-radius: 20px; 
+      width: 100%; 
+      max-width: 600px; 
+      max-height: 90vh; 
+      overflow-y: auto;
+      position: relative;
+      animation: slideIn 0.3s ease;
+    }
+    @keyframes slideIn { from { transform: translateY(-50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    
+    .close { 
+      position: absolute; right: 20px; top: 20px; 
+      font-size: 30px; color: var(--gris); 
+      cursor: pointer; transition: all 0.3s;
+    }
+    .close:hover { color: var(--rojo); transform: scale(1.1); }
+    
+    .form-group { margin-bottom: 25px; }
+    label { 
+      display: block; font-weight: 600; 
+      color: var(--azul-primario); 
+      margin-bottom: 8px; 
+      font-size: 1.1em;
+    }
+    input, select, textarea { 
+      width: 100%; padding: 15px; 
+      border: 2px solid #e2e8f0; 
+      border-radius: 12px; 
+      font-size: 16px; 
+      transition: all 0.3s;
+      background: var(--gris-claro);
+    }
+    input:focus, select:focus, textarea:focus {
+      outline: none; 
+      border-color: var(--azul-primario); 
+      box-shadow: 0 0 0 3px rgba(30,58,138,0.1);
+      transform: translateY(-2px);
+    }
+    
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; }
+    
+    .checkbox-group { 
+      display: flex; align-items: center; 
+      gap: 12px; cursor: pointer;
+      padding: 15px; background: var(--gris-claro); 
+      border-radius: 12px; transition: all 0.3s;
+    }
+    .checkbox-group:hover { background: #e2e8f0; transform: translateX(5px); }
+    .checkbox-group input[type="checkbox"] { width: auto; transform: scale(1.3); }
+    
+    button { 
+      background: linear-gradient(45deg, var(--azul-primario), var(--azul-claro)); 
+      color: white; 
+      border: none; 
+      padding: 18px 40px; 
+      border-radius: 12px; 
+      font-size: 1.2em; 
+      font-weight: 700; 
+      cursor: pointer; 
+      transition: all 0.3s;
+      box-shadow: 0 10px 25px rgba(30,58,138,0.3);
+      width: 100%;
+    }
+    button:hover:not(:disabled) { 
+      transform: translateY(-3px); 
+      box-shadow: 0 15px 35px rgba(30,58,138,0.4);
+    }
+    button:disabled { 
+      background: #94a3b8; 
+      cursor: not-allowed; 
+      transform: none; 
+      box-shadow: none;
+    }
+    
+    .total-card { 
+      background: linear-gradient(135deg, var(--amarillo), var(--amarillo-claro)); 
+      color: var(--azul-primario); 
+      text-align: center; 
+      padding: 30px; 
+      border-radius: 20px; 
+      font-size: 2em; 
+      font-weight: bold; 
+      margin: 30px 0;
+      box-shadow: 0 20px 40px rgba(245,158,11,0.3);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+    
+    .info-box { 
+      background: linear-gradient(135deg, #fef3c7, #fde68a); 
+      border: 2px solid var(--amarillo); 
+      border-radius: 15px; 
+      padding: 20px; 
+      margin: 20px 0;
+    }
+    .info-box strong { color: var(--azul-primario); }
+    
+    .btn-copiar { 
+      background: #10b981; width: auto; padding: 12px 30px; 
+      font-size: 1em; margin: 15px 0;
+    }
+    .btn-copiar:hover { background: #059669; }
+    
+    .seccion { display: none; }
+    .seccion.activa { display: block; animation: fadeIn 0.5s; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    
+    .auto-calculado { background: #dbeafe; font-style: italic; color: var(--azul-primario); }
+    @media (max-width: 768px) { 
+      .grid-2, .grid-3 { grid-template-columns: 1fr; }
+      .card { padding: 20px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🏠 Agenda Quincho</h1>
+      <p>Centro Asturiano de Buenos Aires</p>
+    </div>
+
+    <!-- Modal Validación -->
+    <div id="modalValidacion" class="modal activa">
+      <div class="modal-content">
+        <span class="close" onclick="cerrarModal('modalValidacion')">&times;</span>
+        <h2>🔐 Validación de Socio</h2>
+        <div class="form-group">
+          <label>📱 Número de Socio</label>
+          <input type="number" id="numSocio" placeholder="Ej: 12345">
+        </div>
+        <div class="form-group">
+          <label>🎂 Fecha de Nacimiento</label>
+          <input type="date" id="fechaNac">
+        </div>
+        <button onclick="validarSocio()">🚀 Ingresar</button>
+        <div id="errorValidacion" style="color: var(--rojo); display: none; text-align: center; margin-top: 15px;">
+          ❌ Datos incorrectos
+        </div>
+      </div>
+    </div>
+
+    <!-- Formulario Principal -->
+    <div id="formAgendamiento" class="seccion card activa">
+      <div class="info-box">
+        <strong>⚠️ IMPORTANTE:</strong> El quincho NO SE RESERVA, solo se agenda para control. 
+        Socio debe estar al día con cuota.
+      </div>
+
+      <div class="form-group">
+        <label>🏷️ Tipo de Agenda</label>
+        <select id="tipoQuincho" onchange="toggleCamposTipo()">
+          <option value="">Seleccione...</option>
+          <option value="cerrado">🎪 Quincho Cerrado (Max 60 personas, 3 eventos máx 6hs)</option>
+          <option value="parrilla">🔥 Parrillas Externas (Sin límite tiempo/personas)</option>
+        </select>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label>📅 Fecha</label>
+          <input type="date" id="fechaEvento" onchange="calcularTotal()">
+        </div>
+        <div class="form-group">
+          <label>⏰ Hora Inicio</label>
+          <input type="time" id="horaInicio" onchange="calcularTotal()">
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label>⏰ Hora Fin</label>
+          <input type="time" id="horaFin" onchange="calcularTotal()">
+        </div>
+        <div class="form-group">
+          <label>👥 Invitados Aprox <small>(Auto-calculado)</small></label>
+          <input type="number" id="totalInvitados" class="auto-calculado" readonly>
+        </div>
+      </div>
+
+      <h3>👨‍👩‍👧‍👦 Invitados por Edad</h3>
+      <div class="grid-3">
+        <div class="form-group">
+          <label>👨‍🦰 Mayores (18+)</label>
+          <input type="number" id="mayores" min="0" value="0" onchange="calcularTotal()">
+        </div>
+        <div class="form-group">
+          <label>👴 Jubilados</label>
+          <input type="number" id="jubilados" min="0" value="0" onchange="calcularTotal()">
+        </div>
+        <div class="form-group">
+          <label>🧒 Juveniles (13-17)</label>
+          <input type="number" id="juveniles" min="0" value="0" onchange="calcularTotal()">
+        </div>
+        <div class="form-group">
+          <label>👦 Menores (5-12)</label>
+          <input type="number" id="menores" min="0" value="0" onchange="calcularTotal()">
+        </div>
+        <div class="form-group">
+          <label>👶 Infantiles (0-4)</label>
+          <input type="number" id="infantiles" min="0" value="0" onchange="calcularTotal()">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="checkbox-group" onclick="toggleCheckbox('inflable')">
+          <input type="checkbox" id="inflable" onchange="calcularTotal()">
+          <span>🎈 Trae Inflable (+$20.000)</span>
+        </div>
+        <div class="checkbox-group" onclick="toggleCheckbox('cumpleanero')">
+          <input type="checkbox" id="cumpleanero" onchange="calcularTotal()">
+          <span>🎉 Socio Cumpleañero (bonifica 10)</span>
+        </div>
+      </div>
+      <div class="checkbox-group" onclick="toggleCheckbox('seguridad')" style="justify-content: flex-start;">
+        <input type="checkbox" id="seguridad" onchange="calcularTotal()">
+        <span>🌙 Horario pasa 00:00hs (Seguridad +$20.000)</span>
+      </div>
+
+      <div id="totalDiv" class="total-card" style="display: none;">
+        💰 Total a Abonar: $<span id="totalCalculado">0</span>
+      </div>
+
+      <div class="form-group">
+        <label>👤 Nombre Socio</label>
+        <input type="text" id="nombreSocio" readonly>
+      </div>
+      
+      <div class="form-group">
+        <label>📝 Lista Detalle Invitados</label>
+        <textarea id="listaInvitados" placeholder="Detalle completo (enviar a ADM con antelación)" rows="4"></textarea>
+      </div>
+      
+      <button onclick="mostrarConfirmacion()" id="btnConfirmar" disabled>
+        ✅ Confirmar Agenda
+      </button>
+    </div>
+
+    <!-- Modal Confirmación -->
+    <div id="modalConfirmacion" class="modal">
+      <div class="modal-content">
+        <span class="close" onclick="cerrarModal('modalConfirmacion')">&times;</span>
+        <h2>📋 Detalle Final</h2>
+        <div id="detalleAgenda" style="background: var(--gris-claro); padding: 20px; border-radius: 12px; margin: 20px 0;"></div>
+        
+        <div class="info-box">
+          <strong>📞 Para horarios nocturnos:</strong> Comunicar ADM<br>
+          <strong>📱 Lista invitados:</strong> Enviar a <strong>+5491151585858</strong> con antelación<br>
+          <strong>🎈 Inflable:</strong> Abonar $20.000 (1 semana antes) + <strong>ART/seguro CUIT: 30-54586286-3</strong><br>
+          <strong>💳 Otro medio pago:</strong> Ventanilla ADM 1 día antes
+        </div>
+        
+        <h3>🏦 Datos Bancarios</h3>
+        <div style="background: var(--gris-claro); padding: 20px; border-radius: 12px;">
+          <p><strong>Banco Galicia</strong><br>
+          Centro Asturiano de Bs As<br>
+          Cta Cte: 1084-1 004-4<br>
+          <strong>CBU: 00700047-20000001084140</strong></p>
+          <button class="btn-copiar" onclick="copiarCBU()">📋 Copiar CBU</button>
+        </div>
+        <p style="text-align: center; font-size: 1.3em; color: var(--rojo); font-weight: bold; margin: 20px 0;">
+          🚨 ¡ENVIAR COMPROBANTE POR WHATSAPP!
+        </p>
+        <button onclick="confirmarYGuardar()">💾 Confirmar y Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 👇 CONFIGURAR AQUÍ LA URL DE TU APPS SCRIPT
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwQ-e-wEaYc_6i63tin_6Nh3qVsymEi_DAFJmpG25x8iqNNLAy5vstny2AudDyZ2lyAIQ/exec';
+    
+    let socioValidado = '';
+    const tarifasLunJue = {mayores: 6200, jubilados: 3900, juveniles: 5000, menores: 3500, infantiles: 0};
+    const tarifasVieDom = {mayores: 7700, jubilados: 4900, juveniles: 5500, menores: 4000, infantiles: 0};
+
+    function validarSocio() {
+      const numSocio = document.getElementById('numSocio').value;
+      const fechaNac = document.getElementById('fechaNac').value;
+      const errorDiv = document.getElementById('errorValidacion');
+      
+      if (!numSocio || !fechaNac) {
+        errorDiv.style.display = 'block';
+        return;
+      }
+
+      // Llamada AJAX a Apps Script
+      fetch(`${APPS_SCRIPT_URL}?action=validarSocio&numSocio=${numSocio}&fechaNac=${fechaNac}`)
+        .then(response => response.json())
+        .then(result => {
+          if (result.exito) {
+            socioValidado = result.nombre || `Socio ${numSocio}`;
+            document.getElementById('nombreSocio').value = socioValidado;
+            document.getElementById('modalValidacion').classList.remove('activa');
+            document.getElementById('formAgendamiento').classList.add('activa');
+          } else {
+            errorDiv.textContent = result.mensaje || 'Datos incorrectos';
+            errorDiv.style.display = 'block';
+          }
+        })
+        .catch(() => {
+          errorDiv.textContent = 'Error de conexión. Verifique URL Apps Script.';
+          errorDiv.style.display = 'block';
+        });
+    }
+
+    function toggleCheckbox(id) {
+      document.getElementById(id).click();
+    }
+
+    function calcularTotal() {
+      const fecha = new Date(document.getElementById('fechaEvento').value);
+      const diaSemana = fecha.getDay();
+      const esVieDomFer = (diaSemana === 5 || diaSemana === 6 || diaSemana === 0);
+      const tarifas = esVieDomFer ? tarifasVieDom : tarifasLunJue;
+
+      let total = 0;
+      const cantidades = {
+        mayores: parseInt(document.getElementById('mayores').value) || 0,
+        juveniles: parseInt(document.getElementById('juveniles').value) || 0,
+        jubilados: parseInt(document.getElementById('jubilados').value) || 0,
+        menores: parseInt(document.getElementById('menores').value) || 0,
+        infantiles: parseInt(document.getElementById('infantiles').value) || 0
+      };
+
+      // Total invitados aprox (auto-calculado)
+      const totalInvitados = Object.values(cantidades).reduce((a, b) => a + b, 0);
+      document.getElementById('totalInvitados').value = totalInvitados;
+
+      // Calcular costos
+      total += cantidades.mayores * tarifas.mayores;
+      total += cantidades.jubilados * tarifas.jubilados;
+      total += cantidades.juveniles * tarifas.juveniles;
+      total += cantidades.menores * tarifas.menores;
+
+      if (document.getElementById('inflable').checked) total += 20000;
+      if (document.getElementById('seguridad').checked) total += 20000;
+
+      // Bonificación cumpleañero (orden: mayores > juveniles > jubilados > menores)
+      if (document.getElementById('cumpleanero').checked) {
+        let bonif = 0;
+        let restantes = 10;
+        
+        // Mayores primero
+        if (cantidades.mayores >= restantes) {
+          bonif += restantes * tarifas.mayores;
+          cantidades.mayores -= restantes;
+          restantes = 0;
+        } else {
+          bonif += cantidades.mayores * tarifas.mayores;
+          restantes -= cantidades.mayores;
+          cantidades.mayores = 0;
+        }
+        
+        // Juveniles
+        if (restantes > 0 && cantidades.juveniles > 0) {
+          const desc = Math.min(restantes, cantidades.juveniles);
+          bonif += desc * tarifas.juveniles;
+          cantidades.juveniles -= desc;
+          restantes -= desc;
+        }
+        
+        // Jubilados
+        if (restantes > 0 && cantidades.jubilados > 0) {
+          const desc = Math.min(restantes, cantidades.jubilados);
+          bonif += desc * tarifas.jubilados;
+          cantidades.jubilados -= desc;
+          restantes -= desc;
+        }
+        
+        // Menores
+        if (restantes > 0 && cantidades.menores > 0) {
+          const desc = Math.min(restantes, cantidades.menores);
+          bonif += desc * tarifas.menores;
+          cantidades.menores -= desc;
+        }
+        
+        total -= bonif;
+      }
+
+      document.getElementById('totalCalculado').textContent = total.toLocaleString('es-AR');
+      document.getElementById('totalDiv').style.display = total > 0 ? 'block' : 'none';
+      document.getElementById('btnConfirmar').disabled = total === 0 || totalInvitados === 0;
+    }
+
+    function mostrarConfirmacion() {
+      const tipoTexto = document.getElementById('tipoQuincho').options[document.getElementById('tipoQuincho').selectedIndex].text;
+      const detalle = `
+        <div style="font-size: 1.1em; line-height: 1.6;">
+          <p><strong>👤 Socio:</strong> ${socioValidado}</p>
+          <p><strong>📅 ${tipoTexto}</strong></p>
+          <p><strong>🕒</strong> ${document.getElementById('fechaEvento').value} 
+             ${document.getElementById('horaInicio').value} - ${document.getElementById('horaFin').value}</p>
+          <p><strong>👥 Total:</strong> ${document.getElementById('totalInvitados').value} invitados</p>
+          <p><strong>📊 Por edad:</strong> May:${document.getElementById('mayores').value} 
+             Jub:${document.getElementById('jubilados').value} Juv:${document.getElementById('juveniles').value} 
+             Men:${document.getElementById('menores').value} Inf:${document.getElementById('infantiles').value}</p>
+          <p><strong>💰 Total:</strong> $${document.getElementById('totalCalculado').textContent}</p>
+          <p><strong>📝 Lista:</strong> ${document.getElementById('listaInvitados').value.substring(0, 100)}${document.getElementById('listaInvitados').value.length > 100 ? '...' : ''}</p>
+        </div>
+      `;
+      document.getElementById('detalleAgenda').innerHTML = detalle;
+      document.getElementById('modalConfirmacion').classList.add('activa');
+    }
+
+    function confirmarYGuardar() {
+      const datos = {
+        numSocio: document.getElementById('numSocio').value,
+        fechaNac: document.getElementById('fechaNac').value,
+        socio: socioValidado,
+        tipo: document.getElementById('tipoQuincho').value,
+        fechaEvento: document.getElementById('fechaEvento').value,
+        horaInicio: document.getElementById('horaInicio').value,
+        horaFin: document.getElementById('horaFin').value,
+        totalInvitados: document.getElementById('totalInvitados').value,
+        mayores: document.getElementById('mayores').value,
+        jubilados: document.getElementById('jubilados').value,
+        juveniles: document.getElementById('juveniles').value,
+        menores: document.getElementById('menores').value,
+        infantiles: document.getElementById('infantiles').value,
+        inflable: document.getElementById('inflable').checked,
+        cumpleanero: document.getElementById('cumpleanero').checked,
+        seguridad: document.getElementById('seguridad').checked,
+        total: document.getElementById('totalCalculado').textContent,
+        listaInvitados: document.getElementById('listaInvitados').value
+      };
+
+      // Enviar a Apps Script
+      fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors', // Para compatibilidad
+        body: JSON.stringify(datos)
+      }).then(() => {
+        alert('✅ ¡Agenda confirmada! Enviar comprobante por WhatsApp.');
+        location.reload();
+      }).catch(() => {
+        alert('✅ Agenda enviada. Verificar en Google Sheets.');
+        location.reload();
+      });
+    }
+
+    function copiarCBU() {
+      navigator.clipboard.writeText('00700047-20000001084140').then(() => {
+        alert('📋 CBU copiado');
+      });
+    }
+
+    function cerrarModal(id) {
+      document.getElementById(id).classList.remove('activa');
+    }
+
+    // Inicializar
+    document.addEventListener('DOMContentLoaded', calcularTotal);
+  </script>
+</body>
+</html>
