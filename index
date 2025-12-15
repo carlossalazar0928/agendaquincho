@@ -337,7 +337,7 @@
 
   <script>
     // 👇 CONFIGURAR AQUÍ LA URL DE TU APPS SCRIPT
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwQ-e-wEaYc_6i63tin_6Nh3qVsymEi_DAFJmpG25x8iqNNLAy5vstny2AudDyZ2lyAIQ/exec';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyILp0xQjx9Bi9E47YeTrm50j5_HURVoxVT4gn0R68o0vXN2sWIxJhT6yGykFB3gVv2-g/exec';
     
     let socioValidado = '';
     const tarifasLunJue = {mayores: 6200, jubilados: 3900, juveniles: 5000, menores: 3500, infantiles: 0};
