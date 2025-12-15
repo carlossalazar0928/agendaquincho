@@ -337,7 +337,7 @@
 
   <script>
     // 👇 CONFIGURAR AQUÍ LA URL DE TU APPS SCRIPT
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyILp0xQjx9Bi9E47YeTrm50j5_HURVoxVT4gn0R68o0vXN2sWIxJhT6yGykFB3gVv2-g/exec';
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxxG8_a2eGjW_Ad44amdHWpIEbyLczsjYERqI1QSZ0eIMyw_VIW5oszUtmi2FXITBHrLQ/exec';
     
     let socioValidado = '';
     // Tarifas fijas para el cálculo
