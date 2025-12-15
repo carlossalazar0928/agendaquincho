@@ -336,190 +336,231 @@
   </div>
 
   <script>
-    // 👇 CONFIGURAR AQUÍ LA URL DE TU APPS SCRIPT
-    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyILp0xQjx9Bi9E47YeTrm50j5_HURVoxVT4gn0R68o0vXN2sWIxJhT6yGykFB3gVv2-g/exec';
-    
-    let socioValidado = '';
-    const tarifasLunJue = {mayores: 6200, jubilados: 3900, juveniles: 5000, menores: 3500, infantiles: 0};
-    const tarifasVieDom = {mayores: 7700, jubilados: 4900, juveniles: 5500, menores: 4000, infantiles: 0};
+    // 👇 CONFIGURAR AQUÍ LA URL DE TU APPS SCRIPT
+    const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyILp0xQjx9Bi9E47YeTrm50j5_HURVoxVT4gn0R68o0vXN2sWIxJhT6yGykFB3gVv2-g/exec';
+    
+    let socioValidado = '';
+    // Tarifas fijas para el cálculo
+    const tarifasLunJue = {mayores: 6200, jubilados: 3900, juveniles: 5000, menores: 3500, infantiles: 0};
+    const tarifasVieDom = {mayores: 7700, jubilados: 4900, juveniles: 5500, menores: 4000, infantiles: 0};
 
-    function validarSocio() {
-      const numSocio = document.getElementById('numSocio').value;
-      const fechaNac = document.getElementById('fechaNac').value;
-      const errorDiv = document.getElementById('errorValidacion');
-      
-      if (!numSocio || !fechaNac) {
-        errorDiv.style.display = 'block';
-        return;
-      }
+    function cerrarModal(id) {
+      document.getElementById(id).classList.remove('activa');
+    }
 
-      // Llamada AJAX a Apps Script
-      fetch(`${APPS_SCRIPT_URL}?action=validarSocio&numSocio=${numSocio}&fechaNac=${fechaNac}`)
-        .then(response => response.json())
-        .then(result => {
-          if (result.exito) {
-            socioValidado = result.nombre || `Socio ${numSocio}`;
-            document.getElementById('nombreSocio').value = socioValidado;
-            document.getElementById('modalValidacion').classList.remove('activa');
-            document.getElementById('formAgendamiento').classList.add('activa');
-          } else {
-            errorDiv.textContent = result.mensaje || 'Datos incorrectos';
-            errorDiv.style.display = 'block';
-          }
-        })
-        .catch(() => {
-          errorDiv.textContent = 'Error de conexión. Verifique URL Apps Script.';
-          errorDiv.style.display = 'block';
-        });
-    }
+    function toggleCheckbox(id) {
+      // Alterna el estado del checkbox
+      document.getElementById(id).checked = !document.getElementById(id).checked;
+      calcularTotal();
+    }
 
-    function toggleCheckbox(id) {
-      document.getElementById(id).click();
-    }
+    function toggleCamposTipo() {
+      const tipo = document.getElementById('tipoQuincho').value;
+      // Ejemplo: si quisieras ocultar/mostrar cosas según el tipo
+      // Por ejemplo, el campo de seguridad solo aplica a "cerrado"
+      const seguridadGroup = document.querySelector('.checkbox-group input#seguridad').closest('.checkbox-group');
+      if (seguridadGroup) {
+        seguridadGroup.style.display = tipo === 'cerrado' ? 'flex' : 'none';
+      }
+      // Re-calcular después de cambiar el tipo, por si se deshabilitó un costo fijo
+      calcularTotal();
+    }
 
-    function calcularTotal() {
-      const fecha = new Date(document.getElementById('fechaEvento').value);
-      const diaSemana = fecha.getDay();
-      const esVieDomFer = (diaSemana === 5 || diaSemana === 6 || diaSemana === 0);
-      const tarifas = esVieDomFer ? tarifasVieDom : tarifasLunJue;
+    function validarSocio() {
+      const numSocio = document.getElementById('numSocio').value;
+      const fechaNac = document.getElementById('fechaNac').value;
+      const errorDiv = document.getElementById('errorValidacion');
+      
+      errorDiv.style.display = 'none';
+      if (!numSocio || !fechaNac) {
+        errorDiv.textContent = '❌ Por favor, ingrese ambos datos.';
+        errorDiv.style.display = 'block';
+        return;
+      }
 
-      let total = 0;
-      const cantidades = {
-        mayores: parseInt(document.getElementById('mayores').value) || 0,
-        juveniles: parseInt(document.getElementById('juveniles').value) || 0,
-        jubilados: parseInt(document.getElementById('jubilados').value) || 0,
-        menores: parseInt(document.getElementById('menores').value) || 0,
-        infantiles: parseInt(document.getElementById('infantiles').value) || 0
-      };
+      // Llamada AJAX a Apps Script
+      fetch(`${APPS_SCRIPT_URL}?action=validarSocio&numSocio=${numSocio}&fechaNac=${fechaNac}`)
+        .then(response => response.json())
+        .then(result => {
+          if (result.exito) {
+            socioValidado = result.nombre || `Socio ${numSocio}`;
+            document.getElementById('nombreSocio').value = socioValidado;
+            cerrarModal('modalValidacion');
+            document.getElementById('formAgendamiento').classList.add('activa');
+            calcularTotal(); // Calcular el total inicial
+          } else {
+            errorDiv.textContent = result.mensaje || '❌ Datos incorrectos o socio no al día.';
+            errorDiv.style.display = 'block';
+          }
+        })
+        .catch(() => {
+          errorDiv.textContent = '❌ Error de conexión. Intente más tarde.';
+          errorDiv.style.display = 'block';
+        });
+    }
 
-      // Total invitados aprox (auto-calculado)
-      const totalInvitados = Object.values(cantidades).reduce((a, b) => a + b, 0);
-      document.getElementById('totalInvitados').value = totalInvitados;
+    function calcularTotal() {
+      const tipoQuincho = document.getElementById('tipoQuincho').value;
+      const fechaValor = document.getElementById('fechaEvento').value;
+      
+      let total = 0;
+      let totalInvitados = 0;
+      
+      // Bloquear cálculo si no hay tipo o fecha
+      if (!tipoQuincho || !fechaValor) {
+        document.getElementById('totalCalculado').textContent = '0';
+        document.getElementById('totalDiv').style.display = 'none';
+        document.getElementById('btnConfirmar').disabled = true;
+        document.getElementById('totalInvitados').value = 0;
+        return;
+      }
 
-      // Calcular costos
-      total += cantidades.mayores * tarifas.mayores;
-      total += cantidades.jubilados * tarifas.jubilados;
-      total += cantidades.juveniles * tarifas.juveniles;
-      total += cantidades.menores * tarifas.menores;
+      const fecha = new Date(fechaValor);
+      const diaSemana = fecha.getDay(); // 0 = Domingo, 6 = Sábado
+      // Considera Viernes (5), Sábado (6) y Domingo (0) como fin de semana
+      const esVieDomFer = (diaSemana === 5 || diaSemana === 6 || diaSemana === 0);
+      const tarifas = esVieDomFer ? tarifasVieDom : tarifasLunJue;
+      
+      // Copiar cantidades para manejar la bonificación sin modificar los inputs
+      const cantidades = {
+        mayores: parseInt(document.getElementById('mayores').value) || 0,
+        juveniles: parseInt(document.getElementById('juveniles').value) || 0,
+        jubilados: parseInt(document.getElementById('jubilados').value) || 0,
+        menores: parseInt(document.getElementById('menores').value) || 0,
+        infantiles: parseInt(document.getElementById('infantiles').value) || 0
+      };
 
-      if (document.getElementById('inflable').checked) total += 20000;
-      if (document.getElementById('seguridad').checked) total += 20000;
+      totalInvitados = Object.values(cantidades).reduce((a, b) => a + b, 0);
+      document.getElementById('totalInvitados').value = totalInvitados;
 
-      // Bonificación cumpleañero (orden: mayores > juveniles > jubilados > menores)
-      if (document.getElementById('cumpleanero').checked) {
-        let bonif = 0;
-        let restantes = 10;
-        
-        // Mayores primero
-        if (cantidades.mayores >= restantes) {
-          bonif += restantes * tarifas.mayores;
-          cantidades.mayores -= restantes;
-          restantes = 0;
-        } else {
-          bonif += cantidades.mayores * tarifas.mayores;
-          restantes -= cantidades.mayores;
-          cantidades.mayores = 0;
-        }
-        
-        // Juveniles
-        if (restantes > 0 && cantidades.juveniles > 0) {
-          const desc = Math.min(restantes, cantidades.juveniles);
-          bonif += desc * tarifas.juveniles;
-          cantidades.juveniles -= desc;
-          restantes -= desc;
-        }
-        
-        // Jubilados
-        if (restantes > 0 && cantidades.jubilados > 0) {
-          const desc = Math.min(restantes, cantidades.jubilados);
-          bonif += desc * tarifas.jubilados;
-          cantidades.jubilados -= desc;
-          restantes -= desc;
-        }
-        
-        // Menores
-        if (restantes > 0 && cantidades.menores > 0) {
-          const desc = Math.min(restantes, cantidades.menores);
-          bonif += desc * tarifas.menores;
-          cantidades.menores -= desc;
-        }
-        
-        total -= bonif;
-      }
+      // Si es 'parrilla', el costo es 0 (solo agenda)
+      if (tipoQuincho === 'parrilla') {
+        total = 0;
+      } else { // Quincho Cerrado
+        // Calcular costos completos
+        let subtotal = 0;
+        subtotal += cantidades.mayores * tarifas.mayores;
+        subtotal += cantidades.jubilados * tarifas.jubilados;
+        subtotal += cantidades.juveniles * tarifas.juveniles;
+        subtotal += cantidades.menores * tarifas.menores;
+        // Infantiles es 0
 
-      document.getElementById('totalCalculado').textContent = total.toLocaleString('es-AR');
-      document.getElementById('totalDiv').style.display = total > 0 ? 'block' : 'none';
-      document.getElementById('btnConfirmar').disabled = total === 0 || totalInvitados === 0;
-    }
+        // Costos Fijos
+        if (document.getElementById('inflable').checked) subtotal += 20000;
+        if (document.getElementById('seguridad').checked) subtotal += 20000;
 
-    function mostrarConfirmacion() {
-      const tipoTexto = document.getElementById('tipoQuincho').options[document.getElementById('tipoQuincho').selectedIndex].text;
-      const detalle = `
-        <div style="font-size: 1.1em; line-height: 1.6;">
-          <p><strong>👤 Socio:</strong> ${socioValidado}</p>
-          <p><strong>📅 ${tipoTexto}</strong></p>
-          <p><strong>🕒</strong> ${document.getElementById('fechaEvento').value} 
-             ${document.getElementById('horaInicio').value} - ${document.getElementById('horaFin').value}</p>
-          <p><strong>👥 Total:</strong> ${document.getElementById('totalInvitados').value} invitados</p>
-          <p><strong>📊 Por edad:</strong> May:${document.getElementById('mayores').value} 
-             Jub:${document.getElementById('jubilados').value} Juv:${document.getElementById('juveniles').value} 
-             Men:${document.getElementById('menores').value} Inf:${document.getElementById('infantiles').value}</p>
-          <p><strong>💰 Total:</strong> $${document.getElementById('totalCalculado').textContent}</p>
-          <p><strong>📝 Lista:</strong> ${document.getElementById('listaInvitados').value.substring(0, 100)}${document.getElementById('listaInvitados').value.length > 100 ? '...' : ''}</p>
-        </div>
-      `;
-      document.getElementById('detalleAgenda').innerHTML = detalle;
-      document.getElementById('modalConfirmacion').classList.add('activa');
-    }
+        // Aplicar Bonificación Cumpleañero (hasta 10)
+        if (document.getElementById('cumpleanero').checked) {
+          let bonif = 0;
+          let restantes = 10;
+          
+          const categorias = [
+            {key: 'mayores', tarifa: tarifas.mayores},
+            {key: 'juveniles', tarifa: tarifas.juveniles}, // Cambiado a 2do lugar
+            {key: 'jubilados', tarifa: tarifas.jubilados}, // Cambiado a 3er lugar
+            {key: 'menores', tarifa: tarifas.menores}
+          ];
+          
+          // Iterar en orden de prioridad
+          for (const cat of categorias) {
+            if (restantes <= 0) break;
+            const desc = Math.min(restantes, cantidades[cat.key]);
+            bonif += desc * cat.tarifa;
+            restantes -= desc;
+          }
+          subtotal -= bonif;
+        }
+        total = subtotal;
+      }
 
-    function confirmarYGuardar() {
-      const datos = {
-        numSocio: document.getElementById('numSocio').value,
-        fechaNac: document.getElementById('fechaNac').value,
-        socio: socioValidado,
-        tipo: document.getElementById('tipoQuincho').value,
-        fechaEvento: document.getElementById('fechaEvento').value,
-        horaInicio: document.getElementById('horaInicio').value,
-        horaFin: document.getElementById('horaFin').value,
-        totalInvitados: document.getElementById('totalInvitados').value,
-        mayores: document.getElementById('mayores').value,
-        jubilados: document.getElementById('jubilados').value,
-        juveniles: document.getElementById('juveniles').value,
-        menores: document.getElementById('menores').value,
-        infantiles: document.getElementById('infantiles').value,
-        inflable: document.getElementById('inflable').checked,
-        cumpleanero: document.getElementById('cumpleanero').checked,
-        seguridad: document.getElementById('seguridad').checked,
-        total: document.getElementById('totalCalculado').textContent,
-        listaInvitados: document.getElementById('listaInvitados').value
-      };
+      document.getElementById('totalCalculado').textContent = Math.max(0, total).toLocaleString('es-AR');
+      document.getElementById('totalDiv').style.display = total > 0 ? 'block' : 'none';
+      // Habilitar botón si hay tipo, fecha y al menos un invitado, e importe > 0 (si es quincho cerrado)
+      document.getElementById('btnConfirmar').disabled = !tipoQuincho || !fechaValor || totalInvitados === 0;
+    }
 
-      // Enviar a Apps Script
-      fetch(APPS_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors', // Para compatibilidad
-        body: JSON.stringify(datos)
-      }).then(() => {
-        alert('✅ ¡Agenda confirmada! Enviar comprobante por WhatsApp.');
-        location.reload();
-      }).catch(() => {
-        alert('✅ Agenda enviada. Verificar en Google Sheets.');
-        location.reload();
-      });
-    }
+    function mostrarConfirmacion() {
+      if (document.getElementById('btnConfirmar').disabled) return;
+      
+      const tipoTexto = document.getElementById('tipoQuincho').options[document.getElementById('tipoQuincho').selectedIndex].text;
+      const listaInvitadosTexto = document.getElementById('listaInvitados').value.trim();
+      
+      const detalle = `
+        <div style="font-size: 1.1em; line-height: 1.6;">
+          <p><strong>👤 Socio:</strong> ${socioValidado} (#${document.getElementById('numSocio').value})</p>
+          <p><strong>🎪 Tipo:</strong> ${tipoTexto}</p>
+          <p><strong>🕒 Fecha/Hora:</strong> ${document.getElementById('fechaEvento').value}
+              ${document.getElementById('horaInicio').value} - ${document.getElementById('horaFin').value}</p>
+          <p><strong>👥 Total Invitados:</strong> ${document.getElementById('totalInvitados').value}</p>
+          <p><strong>📊 Detalle:</strong> May:${document.getElementById('mayores').value}
+             Jub:${document.getElementById('jubilados').value} Juv:${document.getElementById('juveniles').value}
+             Men:${document.getElementById('menores').value} Inf:${document.getElementById('infantiles').value}</p>
+          <p><strong>🎈 Adicionales:</strong>
+            ${document.getElementById('inflable').checked ? 'Inflable (+$20k)' : 'Sin Inflable'} /
+            ${document.getElementById('seguridad').checked ? 'Seguridad (+$20k)' : 'Sin Seguridad'}</p>
+          <p><strong>💰 TOTAL A ABONAR:</strong> <strong style="color: var(--rojo);">$${document.getElementById('totalCalculado').textContent}</strong></p>
+          <p><strong>📝 Lista:</strong> ${listaInvitadosTexto ? listaInvitadosTexto.substring(0, 100) + (listaInvitadosTexto.length > 100 ? '...' : '') : 'No adjunta'}</p>
+        </div>
+      `;
+      document.getElementById('detalleAgenda').innerHTML = detalle;
+      document.getElementById('modalConfirmacion').classList.add('activa');
+    }
 
-    function copiarCBU() {
-      navigator.clipboard.writeText('00700047-20000001084140').then(() => {
-        alert('📋 CBU copiado');
-      });
-    }
+    function confirmarYGuardar() {
+      const totalCalculadoTexto = document.getElementById('totalCalculado').textContent;
+      
+      const datos = {
+        action: 'guardarAgenda',
+        numSocio: document.getElementById('numSocio').value,
+        fechaNac: document.getElementById('fechaNac').value,
+        socio: socioValidado,
+        tipo: document.getElementById('tipoQuincho').value,
+        fechaEvento: document.getElementById('fechaEvento').value,
+        horaInicio: document.getElementById('horaInicio').value,
+        horaFin: document.getElementById('horaFin').value,
+        totalInvitados: document.getElementById('totalInvitados').value,
+        mayores: document.getElementById('mayores').value,
+        jubilados: document.getElementById('jubilados').value,
+        juveniles: document.getElementById('juveniles').value,
+        menores: document.getElementById('menores').value,
+        infantiles: document.getElementById('infantiles').value,
+        inflable: document.getElementById('inflable').checked ? 'Sí' : 'No',
+        cumpleanero: document.getElementById('cumpleanero').checked ? 'Sí' : 'No',
+        seguridad: document.getElementById('seguridad').checked ? 'Sí' : 'No',
+        total: totalCalculadoTexto.replace(/\./g, ''), // Quitar puntos de miles para guardar como número
+        listaInvitados: document.getElementById('listaInvitados').value
+      };
 
-    function cerrarModal(id) {
-      document.getElementById(id).classList.remove('activa');
-    }
+      // Enviar a Apps Script
+      fetch(APPS_SCRIPT_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        body: JSON.stringify(datos),
+        headers: { 'Content-Type': 'application/json' }
+      }).then(() => {
+        // Éxito (a menudo capturado por CORS/no-cors)
+        alert(`✅ ¡Agenda confirmada y enviada a la Administración! Total: $${totalCalculadoTexto}. Por favor, enviar comprobante de pago por WhatsApp.`);
+        location.reload();
+      }).catch(() => {
+        // Fallo simulado o por CORS (usamos el mismo mensaje de éxito por el modo no-cors)
+        alert(`✅ ¡Agenda confirmada y enviada! Total: $${totalCalculadoTexto}. Revisar en Google Sheets. Por favor, enviar comprobante por WhatsApp.`);
+        location.reload();
+      });
+    }
 
-    // Inicializar
-    document.addEventListener('DOMContentLoaded', calcularTotal);
-  </script>
+    function copiarCBU() {
+      navigator.clipboard.writeText('00700047-20000001084140').then(() => {
+        alert('📋 CBU copiado');
+      });
+    }
+
+    // Inicializar
+    document.addEventListener('DOMContentLoaded', () => {
+      // Es importante que se haga un primer cálculo al cargar para deshabilitar el botón si no hay nada.
+      calcularTotal();
+      // Mostrar el modal de validación al inicio
+      document.getElementById('modalValidacion').classList.add('activa');
+    });
+  </script>
 </body>
 </html>
